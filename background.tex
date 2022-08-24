@@ -1,0 +1,268 @@
+% !TEX TS-program = latexmk
+
+% partial fixes for ``cannot redefine operator''
+\let\negmedspace\undefined
+\let\negthickspace\undefined
+\RequirePackage{amsmath} 
+
+\documentclass[notitlepage,openany,11pt]{report}
+%\documentclass[11pt,oneside]{amsart}
+\usepackage[pdftex,letterpaper,
+total={5.75in, 9in},left=0.75in,marginparwidth=1.25in]{geometry}
+\usepackage[pdftex]{graphicx}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% fonts and encoding
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel} % hyphenation etc.
+\usepackage{csquotes}%
+\usepackage{newtxtext,newtxmath}
+% \usepackage{times} % times font for text, not equations
+\usepackage{microtype} % kerning
+
+% math
+\let\Bbbk\relax
+\let\openbox\relax
+%\usepackage{amsmath} % math
+\usepackage{amsfonts,amssymb,amsthm}
+\usepackage{bm}
+\DeclareMathOperator{\Tr}{Tr}
+\DeclareMathOperator{\var}{var}
+\DeclareMathOperator{\cov}{cov}
+
+% other packages
+\usepackage{adjmulticol} % 2-col for biblio
+\usepackage{indentfirst}
+\usepackage{enumitem}
+\setlist{noitemsep}
+\usepackage{tabularx}
+\usepackage{marginnote}
+\renewcommand*{\marginfont}{\footnotesize}
+
+% Draw box around projects
+\usepackage{framed}
+\theoremstyle{plain}% default
+\newtheorem{notethm}{Remark}
+\newenvironment{notebox}
+    {\noindent\colorlet{shadecolor}{cyan!15}\begin{shaded}\begin{notethm}}
+    {\end{notethm}\end{shaded}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% chapter/section headings
+
+\usepackage{sectsty} % reduce font size for chapter headers
+\chapterfont{\LARGE}
+\chapternumberfont{\LARGE}
+\chaptertitlefont{\LARGE}
+\sectionfont{\Large}
+\subsectionfont{\large}
+\subsubsectionfont{\normalsize}
+\usepackage[titles]{tocloft}
+\renewcommand{\cftchapfont}{\normalfont\bfseries}% titles in bold
+\renewcommand{\cftsecfont}{\normalfont\bfseries}% titles in bold
+\renewcommand{\cftsecpagefont}{\normalfont\bfseries}% page numbers in bold
+% \renewcommand{\cftdotsep}{1}
+
+% Number subsubsections for references, but don't put them in the TOC
+\setcounter{secnumdepth}{3} 
+\setcounter{tocdepth}{2}
+ 
+% Number subsubsections for references, but don't put them in the TOC
+% don't number chapters in order to keep TOC, text refs manageable
+\newcommand{\nonumberchapter}[1]{%
+    %\setcounter{section}{0}
+    \chapter*{#1}
+    \vspace{-20pt}
+    \addcontentsline{toc}{chapter}{#1}
+}
+\renewcommand{\thesection}{\arabic{section}}
+\newcommand{\nonumbersection}[1]{%
+    \setcounter{subsection}{0}
+    \section*{#1}
+    \addcontentsline{toc}{section}{#1}
+}
+\numberwithin{equation}{section}
+
+% put TOC on title page, 
+% https://tex.stackexchange.com/questions/45861/toc-on-the-title-page-in-a-report
+\makeatletter
+\newcommand*{\toccontents}{\@starttoc{toc}}
+\makeatother
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Biblio
+
+\usepackage[square,numbers,sort&compress]{natbib} % ,merge,elide
+
+\usepackage{xcolor}
+\definecolor{darkred}{rgb}{0.45,0.,0.}
+\definecolor{darkgreen}{rgb}{0.,0.45,0.}
+\definecolor{darkblue}{rgb}{0.,0.,0.5}
+
+\usepackage[hyphens,obeyspaces]{url}
+\usepackage[%
+    breaklinks,colorlinks=true,
+    linkcolor=darkred,citecolor=darkgreen,urlcolor=darkblue,
+    backref=page
+]{hyperref}
+% \hypersetup{backref=page} % needs to be specified post-load?
+\usepackage{hypernat} % after hyperref and natbib
+%\PassOptionsToPackage{hyphens,obeyspaces}{url}
+\usepackage{doi} % needs to be after hyperref and url?
+
+
+% Eliminate ``References'' header from \bibliography since
+% we put that in manually, because we want it in TOC
+\renewcommand{\bibsection}{}
+
+% Don't complain about exported language=en tags in biblio
+% https://tex.stackexchange.com/a/199299
+\makeatletter
+\let\ORIbbl@fixname\bbl@fixname
+\def\bbl@fixname#1{%
+    \@ifundefined{languagealias@\expandafter\string#1}
+        {\ORIbbl@fixname#1}
+        {\edef\languagename{\@nameuse{languagealias@#1}}}%
+}
+\newcommand{\definelanguagealias}[2]{%
+    \@namedef{languagealias@#1}{#2}%
+}
+\makeatother
+\definelanguagealias{en}{english}
+\definelanguagealias{en-US}{english}
+
+% patch backref option to link to line of citation
+% must be applied after hyperref loaded w/appropriate backref option
+% ``merge'' option for natbib still broken, though.
+% From https://tex.stackexchange.com/a/67852, see there for comments
+
+% If there are multiple cites on the same page, should we show only the
+% first one or should we show them all?
+\newif\ifbackrefshowonlyfirst
+\backrefshowonlyfirsttrue % or false
+
+\makeatletter
+\let\BR@direct@old@hyper@natlinkstart\hyper@natlinkstart
+\renewcommand*{\hyper@natlinkstart}{\phantomsection\BR@direct@old@hyper@natlinkstart}%
+\let\BR@direct@oldBR@citex\BR@citex
+\renewcommand*{\BR@citex}{\phantomsection\BR@direct@oldBR@citex}%
+
+\long\def\hyper@page@BR@direct@ref#1#2#3{\hyperlink{#3}{#1}}
+
+\ifx\backrefxxx\hyper@page@backref
+    \let\backrefxxx\hyper@page@BR@direct@ref
+    \ifbackrefshowonlyfirst
+        %\let\backrefxxxdupe\hyper@page@backref%
+        \newcommand*{\backrefxxxdupe}[3]{#1}%
+    \fi
+\else
+    \ifbackrefshowonlyfirst
+        \newcommand*{\backrefxxxdupe}[3]{#2}%
+    \fi
+\fi
+\RequirePackage{etoolbox}
+\patchcmd{\Hy@backout}{Doc-Start}{\@currentHref}{}{\errmessage{I can't patch backref}}
+\makeatother
+
+% Add text to bibitem explaining what backrefs are doing
+% from https://tex.stackexchange.com/a/397886
+\renewcommand\backreftwosep{, }
+\renewcommand\backrefsep{, }
+\renewcommand*{\backrefalt}[4]{%
+    \ifcase #1%
+        \or Cited on~p.~#2.%
+        \else Cited on~pp.~#2.%
+    \fi%
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+\newcommand {\be}{\begin{equation*}}
+\newcommand {\ee} {\end{equation*}}
+\newcommand{\boldref}[1]{\textbf{\ref{#1}}}
+\newcommand{\boldnameref}[1]{\textbf{\nameref{#1}}}
+
+\newcommand{\mbf}[1]{\mathbf{#1}}
+\newcommand{\mbb}[1]{\mathbb{#1}}
+\newcommand{\mcal}[1]{\mathcal{#1}}
+\newcommand{\mtilde}[1]{\widetilde{#1}}
+\newcommand{\mhat}[1]{\widehat{#1}}
+\newcommand{\mol}[1]{\overline{#1}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\title{Background on Bayesian machine learning, inference and control}
+\author{Tom Jackson}
+%\email[]{Your e-mail address}
+%\affiliation{}
+
+\hypersetup{pageanchor=false} % fix hyperref error: https://tex.stackexchange.com/a/331766
+
+%\begin{titlepage}
+\newgeometry{total={5.75in, 9in}} % https://stackoverflow.com/questions/1670463
+\maketitle
+
+\begin{abstract}
+This is a (disorganized) summary of entry-level material I've compiled for my own use.
+\end{abstract}
+
+\hypersetup{pageanchor=true}
+\pagenumbering{arabic}
+
+%\addtocontents{toc}{\vspace{-10pt}}
+%\tableofcontents
+\toccontents
+
+\restoregeometry
+
+%\end{titlepage}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{}
+
+\subsection{}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% References
+
+\clearpage
+\newgeometry{total={5.75in, 9in}} % https://stackoverflow.com/questions/1670463
+% \section{References}
+
+% reduce spacing between bibliography items
+\let\oldthebibliography=\thebibliography
+\let\endoldthebibliography=\endthebibliography
+\renewenvironment{thebibliography}[1]{%
+    \begin{oldthebibliography}{#1}%
+    \setlength{\parskip}{3pt plus 2pt minus 1pt}%
+    \setlength{\itemsep}{3pt}%
+}%
+{%
+    \end{oldthebibliography}%
+}
+
+% put biblio in small text, 2-column environment
+\begin{adjmulticols*}{2}{-2cm}{-1.5cm}[\section*{References}] % expand margins
+
+\noindent
+%\begin{adjmulticols}{2}{-2cm}{-2cm} % expand margins
+\footnotesize %\small %
+\begin{flushleft}
+\bibliographystyle{alphaurl}
+\bibliography{info-optim-control,info-optim-control-2}
+%\printbibliography
+\end{flushleft}
+\normalsize
+
+\end{adjmulticols*}
+
+\end{document}
+ 
