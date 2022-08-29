@@ -195,7 +195,7 @@ total={5.75in, 9in},left=0.75in,marginparwidth=1.25in]{geometry}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\title{Background on Bayesian machine learning, inference and control}
+\title{Background on computational chemistry}
 \author{Tom Jackson}
 %\email[]{Your e-mail address}
 %\affiliation{}
@@ -222,12 +222,115 @@ This is a (disorganized) summary of entry-level material I've compiled for my ow
 %\end{titlepage}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{}
+\chapter{First pass at an outline}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introduction}
 
-\section{}
+Approaches to fundamental complexity of solving the quantum many-body problem.
 
-\subsection{}
+Nobels: 1998 to \href{https://www.nobelprize.org/prizes/chemistry/1998/kohn/lecture/}{Walter Kohn} for DFT and to \href{https://www.nobelprize.org/prizes/chemistry/1998/pople/lecture/}{John Pople} for ab initio methods with Gaussian orbitals. 2013 to \href{https://www.nobelprize.org/prizes/chemistry/2013/karplus/lecture/}{Martin Karplus}, \href{https://www.nobelprize.org/prizes/chemistry/2013/levitt/lecture/}{Michael Levitt} and \href{https://www.nobelprize.org/prizes/chemistry/2013/warshel/lecture/}{Arieh Warshel} for ``multiscale models'' --- what are the relevant scales?
+
+\subsection{What to calculate?}
+Fundamental premise of chemistry is that structure is the key to everything. Is it too much of a stretch to lump conformational dependence of biomolecules in with that?
+
+Charge density (multipole moments). Spectra. Reactivity --- reaction pathways? 
+
+Quantitative structure-activity (or ``property,'' in general) relationship (\href{https://en.wikipedia.org/wiki/Quantitative_structure\%E2\%80\%93activity_relationship}{QSAR}): pure machine learning approach for empirical relationships, with all the usual caveats. ``Matched molecular pair analysis'' (\href{https://en.wikipedia.org/wiki/Matched_molecular_pair_analysis}{MMPA}) = restricting the problem to effects of single-atom substitution or other small structural changes.
+
+
+\section{Classical treatments}
+
+\subsection{Molecular mechanics}
+Nuclear configuration as (heuristically) classical ``balls on springs,'' with configurational potentials/\href{https://en.wikipedia.org/wiki/Force_field_(chemistry)}{force fields} incorporating quantum effects.
+\begin{itemize}
+
+\item \emph{Covalent bonding terms.} Natural coordinates are bond length, angle (three-atom, relative to other bonds) and dihedral angle/torsion. 
+\begin{itemize}
+\item Morse potential (diatomic approx) for length; harmonic approximation is good at biological temperatures. 
+\item Torsional terms have multiple minima; also ``improper'' (=fudge?) terms to e.g. keep benzene rings planar.
+\end{itemize}
+
+\item \emph{Non-bonding terms.} Source of computational bottleneck; $O(N^{2})$ scaling versus $O(N)$.
+\begin{itemize}
+\item Electrostatic: Important in practice for macromolecular stability; $r^{-1}$ falloff, at least before effective screening. \href{https://en.wikipedia.org/wiki/Ewald_summation#Particle_mesh_Ewald_(PME)_method}{Particle-mesh Ewald} and \href{https://en.wikipedia.org/wiki/Fast_multipole_method}{fast multipole} approaches similar in that they use a mean-field-ish effective approximation for long-range contributions, treating short-range interactions exactly.
+\item van der Waals: Lennard-Jones potential, frequently truncated at short distances. Falls off as $r^{-6}$ at least.
+\end{itemize}
+
+\item \emph{\href{https://en.wikipedia.org/wiki/Solvent_model}{Solvent.}} \href{https://en.wikipedia.org/wiki/Implicit_solvation}{Implicit solvation} models solvent as continuum with effective properties. Can also add \href{https://en.wikipedia.org/wiki/Water_model}{explicit waters}.
+
+\end{itemize}
+
+To reiterate, specifying a ``force field'' involves mass, (partial) charge (and maybe polarizability) and LJ parameters for each atom, and equilibrium bond potential parameters for each pair and triplet of atoms. Atoms in different groups/environments treated differently. Of course many bells and whistles in \href{https://en.wikipedia.org/wiki/Comparison_of_force-field_implementations}{practical implementations}.
+
+Inputs are largely empirical: geometry from x-ray structures; energetics from observed surface and hydration energies. Feedback loop in tweaking parameters to match observations. \marginnote{Immediate application for approx Bayes/experimental design.} Can also make use of ab initio QM calculations.
+
+Bigger question is generalizability of force field parameters, in that they can be set from ``training data'' dissimilar to what they're applied to (e.g. gas- vs. solid-phase, small-molecule vs macromolecules). How desirable is parameter interpretability? \href{https://bionanostructures.com/interface-md/}{IFF} held as a relatively rigorous approach to force field design.
+
+
+
+\subsection{Molecular dynamics}
+Dynamics needed to recover properties at $T>0$. Again, purely classical equations of motion.
+
+Versus Monte Carlo: MC with Metropolis updates lets us work in (grand?) canonical ensemble; doesn't require gradient. Disadvantage is that MC sampling effectively erases time coordinate and time dependence. 
+[...]
+
+
+\subsection{Proteins, specifically}
+Macromolecules present problems due to growth in configurational degrees of freedom. 
+
+
+\href{https://en.wikipedia.org/wiki/Ligand_(biochemistry)}{Ligand binding} is reversible and mediated by \href{https://en.wikipedia.org/wiki/Non-covalent_interaction}{non-covalent}, intermolecular forces. Solvent effects can play a big role, through steric exclusion (and polarizability?) Effect is to produce a conformational change in protein
+
+
+\subsection{Larger scales}
+Claim shift to larger scales accompanied by a shift from energy dominance (QM) to entropy dominance (nanostructures and biology).
+
+Continuum methods like Navier-Stokes, finite-element methods for elasticity. 
+
+\href{https://en.wikipedia.org/wiki/Dissipative_particle_dynamics}{Dissipative particle dynamics} (DPD) --- distinct from Langevin in that momentum is still conserved. 
+
+
+\href{https://en.wikipedia.org/wiki/Phase-field_model}{Phase-field models} --- Goldenfeld RG ref.
+
+
+\section{Quantum treatments}
+
+\begin{itemize}
+\item \emph{Born-Oppenheimer approximation}: electronic and nuclear degrees of freedom are independent; nuclear positions may be regarded as static/quenched on electronic timescales; more specifically, treat nuclear kinetic energy as a perturbation governed by ratio of electron to nuclear masses.
+
+\item \emph{Relativistic effects} can generally be neglected outside of heavy atoms (transition metals).
+
+\item \emph{\href{https://en.wikipedia.org/wiki/Hartree\%E2\%80\%93Fock_method}{Hartree-Fock}}, self-consistent field or molecular orbital approximation: includes the above, and adds the assumption that electron degrees of freedom are non-interacting (with each other); i.e. many-body wavefunction is a single Slater det of one-particle wavefunctions, the molecular orbitals.
+
+Can also be viewed as a mean-field method: two-body Coulomb term is replaced by a single-particle approximation, the ``Fock matrix.'' \marginnote{What sets effective charge?} Rest is variational perturbation theory: write molecular orbitals as linear combinations in some basis, and find coefficients minimizing approximate one-particle Hamiltonian.
+
+\href{https://en.wikipedia.org/wiki/Basis_set_(chemistry)}{Basis choices}: ``linear combination of atomic orbitals''
+\begin{itemize}
+\item Hydrogenic/Schrodinger orbitals: from solving the single-particle Coulomb problem. Not used.
+\item Slater orbitals: not to be confused with Slater determinants. Retain the $r^{\ell} e^{-\alpha r}$ radial dependence of hydrogenic orbitals, but drop the Laguerre polynomial (so no radial nodes). Also disused, in favor of
+\item Gaussian orbitals (or ``primitives,'' since we're not solving the one-particle Schrodinger equation anymore): $r^{\ell} e^{-\alpha r^{2}}$ dependence; several Gaussians can approximate more physical radial dependence, plus have the key property that overlap integrals are analytically tractable --- specifically, product of two Gaussian orbitals at different loci can be written as a finite sum of Gaussians centered on the line connecting loci. Means all multi-center integrals\marginnote{What's the breakdown between lookup tables, analytic fomulae and numerical integration?} can be decomposed to single-center ones; speedup far outweighs cost of larger basis. Note that neither Slater nor Gaussian primitives have radial nodes; idea is you reproduce that by taking a combination with opposing signs.
+\item For same reason (ease of integration), most software uses a cartesian Gaussian basis (i.e. $x^{i}y^{j}z^{k} e^{-\alpha(x^2 + y^2 + z^2)}$), rather than the physical spherical harmonics.
+\item ``Contractions'' refers to linear combinations of Gaussians that are treated as a unit (same coefficient) during variational optimization.
+\item ``Polarization'' from including basis elements with higher $\ell$ than in occupied orbitals. ``Diffuse'' elements likewise refers to small-$\alpha$ Gaussians, meant to capture tail dependence.
+\end{itemize}
+
+
+\item \emph{\href{https://en.wikipedia.org/wiki/M\%C3\%B8ller\%E2\%80\%93Plesset_perturbation_theory}{M\o{}ller-Plesset perturbation theory}} treats neglected two-body term in Rayleigh-Schrodinger perturbation theory (note still only using a single Slater det). Not guaranteed to be convergent...
+\end{itemize}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Misc. topics}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Renormalization group for polymers in solution}
+
+``Protein folding and ligand binding are thermodynamically closer to crystallization, or liquid-solid transitions as these processes represent freezing of mobile molecules in condensed media.''
+
+What's new since De Gennes, Des Cloizeaux et al.?
+
+How do we see energy-entropy balance from path integral formulation?
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
